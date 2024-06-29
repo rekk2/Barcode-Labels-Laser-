@@ -9,7 +9,6 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
@@ -46,7 +45,6 @@ def download_json(data):
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name='labels.json', mimetype='application/json')
 
-
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
@@ -80,7 +78,6 @@ def generate_labels(data, color):
 
         x = side_margin + (column_index * (label_width + gap_between_labels))
         y = height - top_margin - (row_index * label_height) - label_height
-
 
         c.setFillColor(colors.HexColor(color))  
         c.rect(x, y, label_width, label_height, fill=1, stroke=0)
@@ -147,5 +144,3 @@ def generate_labels(data, color):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
