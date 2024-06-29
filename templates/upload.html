@@ -1,7 +1,49 @@
 <!doctype html>
-<title>Upload new JSON File</title>
-<h1>Upload new JSON File for Labels</h1>
-<form method=post enctype=multipart/form-data>
-  <input type=file name=file>
-  <input type=submit value=Upload>
-</form>
+<html lang="en">
+<head>
+    <title>Upload Label File or Generate by Range</title>
+    <style>
+        .input-group {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload File for Labels</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div class="input-group">
+            <label for="background_color">Label Background Color:</label>
+            <input type="color" id="background_color" name="background_color" value="#800080"> <!-- Default color set to purple -->
+        </div>
+        <input type="file" name="file">
+        <input type="submit" name="upload_json" value="Upload JSON">
+        <h2>Specify ranges to generate:</h2>
+        <div class="input-group">
+            <label for="aisle_min">Aisle From:</label>
+            <input type="number" id="aisle_min" name="aisle_min">
+            <label for="aisle_max">Aisle To:</label>
+            <input type="number" id="aisle_max" name="aisle_max">
+        </div>
+        <div class="input-group">
+            <label for="row_min">Row From:</label>
+            <input type="number" id="row_min" name="row_min">
+            <label for="row_max">Row To:</label>
+            <input type="number" id="row_max" name="row_max">
+        </div>
+        <div class="input-group">
+            <label for="bin_min">Bin From:</label>
+            <input type="number" id="bin_min" name="bin_min">
+            <label for="bin_max">Bin To:</label>
+            <input type="number" id="bin_max" name="bin_max">
+        </div>
+        <div class="input-group">
+            <label for="bay_min">Bay From:</label>
+            <input type="number" id="bay_min" name="bay_min">
+            <label for="bay_max">Bay To:</label>
+            <input type="number" id="bay_max" name="bay_max">
+        </div>
+
+        <input type="submit" name="generate_json" value="Generate">
+    </form>
+</body>
+</html>
