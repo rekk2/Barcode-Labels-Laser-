@@ -19,32 +19,23 @@ def home():
         if 'upload_json' in request.form:
             if file and file.filename.endswith('.json'):
                 data = json.load(file)
-                return generate_labels(data, color)  # Pass color here
+                return generate_labels(data, color)  
             else:
                 return "No JSON file provided or wrong file type.", 400
+        elif 'generate_json' in request.form:
+            return generate_json_file(request.form)
     return render_template('upload.html')
 
 def generate_json_file(form):
-    aisle_min = int(form['aisle_min'])
-    aisle_max = int(form['aisle_max'])
-    row_min = int(form['row_min'])
-    row_max = int(form['row_max'])
-    bin_min = int(form['bin_min'])
-    bin_max = int(form['bin_max'])
-    bay_min = int(form['bay_min'])
-    bay_max = int(form['bay_max'])
-
     labels = []
-    for aisle in range(aisle_min, aisle_max + 1):
-        for row in range(row_min, row_max + 1):
-            for bin in range(bin_min, bin_max + 1):
-                for bay in range(bay_min, bay_max + 1):
-                    label = {
+    for aisle in range(int(form['aisle_min']), int(form['aisle_max']) + 1):
+        for row in range(int(form['row_min']), int(form['row_max']) + 1):
+            for bin in range(int(form['bin_min']), int(form['bin_max']) + 1):
+                for bay in range(int(form['bay_min']), int(form['bay_max']) + 1):
+                    labels.append({
                         'Field1': f"{aisle:02} {row:02} {bin:02}",
                         'Bay': f"{bay:02}"
-                    }
-                    labels.append(label)
-
+                    })
     return download_json(labels)
 
 def download_json(data):
@@ -119,7 +110,7 @@ def generate_labels(data, color):
         # Define and draw the white rectangle for the barcode area
         white_rect_x = x + 0.25 * inch
         white_rect_y = y + 0.001 * inch
-        white_rect_width = 3.38 * inch - 0.25 * inch  # Ending at 3.38" from the left side
+        white_rect_width = 3.13 * inch 
         white_rect_height = 0.7 * inch
 
         c.setFillColor(colors.white)
@@ -130,17 +121,17 @@ def generate_labels(data, color):
         barcode = code128.Code128(row['Field1'], barHeight=0.5 * inch, barWidth=1.6)
         barcode.drawOn(c, x + 0.2 * inch, barcode_y_position)
         
-        #Drawing arrow
+        #Draw arrow
         arrow_x = x + 3.7 * inch
         arrow_start_y = y + label_height - 1.7 * inch
         arrow_end_y = y + label_height - 0.87 * inch
 
         c.setLineWidth(6)
         c.setStrokeColor(colors.black)
-        c.setFillColor(colors.black)  # Set fill color for a solid arrowhead
-        c.line(arrow_x, arrow_start_y, arrow_x, arrow_end_y)  # Draw the shaft of the arrow
+        c.setFillColor(colors.black)  
+        c.line(arrow_x, arrow_start_y, arrow_x, arrow_end_y)  
 
-        # Draw solid arrowhead
+        #More arrow drawing
         arrowhead_size = 0.11 * inch  # Increase size for bigger arrowhead
         p = c.beginPath()
         p.moveTo(arrow_x, arrow_end_y)
@@ -156,4 +147,5 @@ def generate_labels(data, color):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
