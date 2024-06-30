@@ -5,16 +5,21 @@
     <title>Upload Label File or Generate by Range</title>
     <script>
     function validateForm() {
-        const aisles = document.getElementById('aisle_max').value >= document.getElementById('aisle_min').value;
-        const rows = document.getElementById('row_max').value >= document.getElementById('row_min').value;
-        const bins = document.getElementById('bin_max').value >= document.getElementById('bin_min').value;
-        const bays = document.getElementById('bay_max').value >= document.getElementById('bay_min').value;
+        // Check which submit button was clicked
+        var action = document.activeElement.getAttribute('name');
 
-        if (!aisles || !rows || !bins || !bays) {
-            alert("Please ensure that all 'From' fields are less than or equal to 'To' fields.");
-            return false;  // Prevent form submission
+        if (action === 'generate_json') {
+            const aisles = document.getElementById('aisle_max').value >= document.getElementById('aisle_min').value;
+            const rows = document.getElementById('row_max').value >= document.getElementById('row_min').value;
+            const bins = document.getElementById('bin_max').value >= document.getElementById('bin_min').value;
+            const bays = document.getElementById('bay_max').value >= document.getElementById('bay_min').value;
+
+            if (!aisles || !rows || !bins || !bays) {
+                alert("Please ensure that all 'To' fields are greater than or equal to 'From' fields.");
+                return false;  // Prevent form submission
+            }
         }
-        return true;  // Allow form submission
+        return true;  // Allow form submission if uploading JSON or if conditions are met
     }
     </script>
 </head>
@@ -41,27 +46,27 @@
         <h2>Specify Ranges to Generate Labels</h2>
         <div>
             <label for="aisle_min">Aisle From:</label>
-            <input type="number" id="aisle_min" name="aisle_min" required>
+            <input type="number" id="aisle_min" name="aisle_min">
             <label for="aisle_max">Aisle To:</label>
-            <input type="number" id="aisle_max" name="aisle_max" required>
+            <input type="number" id="aisle_max" name="aisle_max">
         </div>
         <div>
             <label for="row_min">Row From:</label>
-            <input type="number" id="row_min" name="row_min" required>
+            <input type="number" id="row_min" name="row_min">
             <label for="row_max">Row To:</label>
-            <input type="number" id="row_max" name="row_max" required>
+            <input type="number" id="row_max" name="row_max">
         </div>
         <div>
             <label for="bin_min">Bin From:</label>
-            <input type="number" id="bin_min" name="bin_min" required>
+            <input type="number" id="bin_min" name="bin_min">
             <label for="bin_max">Bin To:</label>
-            <input type="number" id="bin_max" name="bin_max" required>
+            <input type="number" id="bin_max" name="bin_max">
         </div>
         <div>
             <label for="bay_min">Bay From:</label>
-            <input type="number" id="bay_min" name="bay_min" required>
+            <input type="number" id="bay_min" name="bay_min">
             <label for="bay_max">Bay To:</label>
-            <input type="number" id="bay_max" name="bay_max" required>
+            <input type="number" id="bay_max" name="bay_max">
         </div>
         <input type="submit" name="generate_json" value="Generate JSON">
     </form>
