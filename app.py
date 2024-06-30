@@ -13,17 +13,23 @@ app = Flask(__name__)
 def home():
     if request.method == 'POST':
         file = request.files.get('file')
-        color = request.form.get('background_color', '#800080')  # Default to purple if not provided
+        color = request.form.get('background_color')
+        template_name = request.form.get('template_name', 'default')
+        selected_template = templates.get(template_name, {})
 
         if 'upload_json' in request.form:
             if file and file.filename.endswith('.json'):
-                data = json.load(file)
-                return generate_labels(data, color)  
+                try:
+                    data = json.load(file)
+                    return generate_labels(data, color, selected_template)
+                except json.JSONDecodeError:
+                    return "Invalid JSON file.", 400
             else:
                 return "No JSON file provided or wrong file type.", 400
         elif 'generate_json' in request.form:
             return generate_json_file(request.form)
-    return render_template('upload.html')
+    return render_template('upload.html', templates=templates)
+
 
 def generate_json_file(form):
     labels = []
@@ -39,108 +45,146 @@ def generate_json_file(form):
 
 def download_json(data):
     buffer = BytesIO()
-    # Convert the JSON data to string, then encode it to bytes, and finally write it to the buffer.
     json_str = json.dumps(data, indent=4)
     buffer.write(json_str.encode('utf-8'))
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name='labels.json', mimetype='application/json')
 
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        file = request.files.get('file')
-        color = request.form.get('background_color', '#800080')  # Default color is purple
-        if file and file.filename.endswith('.json'):
-            data = json.load(file)
-            return generate_labels(data, color)
-        else:
-            return "No JSON file provided or wrong file type.", 400
-    return render_template('upload.html')
+def generate_labels(data, color, template):
+    # Check if necessary keys exist in the template
+    required_keys = [
+        'label_height', 'label_width', 'top_margin', 'side_margin',
+        'gap_between_labels', 'labels_per_row', 'labels_per_sheet',
+        'font_size_label', 'font_size_value', 'barcode_height',
+        'barcode_width', 'arrow_thickness', 'arrow_length',
+        'arrow_x_offset', 'arrow_start_y_offset', 'arrowhead_size',
+        'white_rect_width', 'white_rect_height'
+    ]
+    if not all(key in template for key in required_keys):
+        return "Template is incomplete.", 400
 
-def generate_labels(data, color):
     c = canvas.Canvas("labels.pdf", pagesize=letter)
-    width, height = letter  # Size of letter page
+    width, height = letter
+
+    label_height = template['label_height'] * inch
+    label_width = template['label_width'] * inch
+    top_margin = template['top_margin'] * inch
+    side_margin = template['side_margin'] * inch
+    gap_between_labels = template['gap_between_labels'] * inch
+    labels_per_row = template['labels_per_row']
+    labels_per_sheet = template['labels_per_sheet']
+    font_size_label = template['font_size_label']
+    font_size_value = template['font_size_value']
+    barcode_height = template['barcode_height'] * inch
+    barcode_width = template['barcode_width']
+    barcode_y_offset = template['barcode_y_offset'] * inch
+    barcode_x_offset = template['barcode_x_offset'] * inch
+    arrow_thickness = template['arrow_thickness']
+    arrow_length = template['arrow_length'] * inch
+    arrow_x_offset = template['arrow_x_offset']
+    arrow_start_y_offset = template['arrow_start_y_offset'] * inch
+    arrowhead_size = template['arrowhead_size'] * inch
+    white_rect_width = template['white_rect_width'] * inch
+    white_rect_height = template['white_rect_height'] * inch
+    white_rect_x_offset = template['white_rect_x_offset'] * inch
+    white_rect_y_offset = template['white_rect_y_offset'] * inch
+    text_y_offset = template['text_y_offset'] * inch
+    value_y_offset = template['value_y_offset'] * inch
+    text_x_offset_aisle = template['text_x_offset_aisle'] * inch
+    text_x_offset_row = template['text_x_offset_row'] * inch
+    text_x_offset_bay = template['text_x_offset_bay'] * inch
+    text_x_offset_bin = template['text_x_offset_bin'] * inch
+    value_x_offset_aisle = template['value_x_offset_aisle'] * inch
+    value_x_offset_row = template['value_x_offset_row'] * inch
+    value_x_offset_bay = template['value_x_offset_bay'] * inch
+    value_x_offset_bin = template['value_x_offset_bin'] * inch
+    
     num_labels_page = 0
-
-    label_height = 2.0 * inch
-    label_width = 4.0 * inch
-    top_margin = 0.50 * inch
-    side_margin = 0.15 * inch
-    gap_between_labels = 0.2 * inch
-
+    total_labels = 0
     for index, row in enumerate(data):
-        if num_labels_page >= 10:
+        if num_labels_page >= labels_per_sheet:
             c.showPage()
             num_labels_page = 0
 
-        column_index = index % 2
-        row_index = (index // 2) % 5
+        column_index = index % labels_per_row
+        page_index = index // labels_per_sheet  
+        row_index = (index - page_index * labels_per_sheet) // labels_per_row
 
         x = side_margin + (column_index * (label_width + gap_between_labels))
-        y = height - top_margin - (row_index * label_height) - label_height
+        y = height - top_margin - (row_index + 1) * label_height  
 
-        c.setFillColor(colors.HexColor(color))  
+        c.setFillColor(colors.HexColor(color))
         c.rect(x, y, label_width, label_height, fill=1, stroke=0)
 
-        barcode_y_position = y + 0.1 * inch
 
         parts = row['Field1'].split()
-        aisle, row_val, bin = parts if len(parts) >= 3 else ('Unknown', 'Unknown', 'Unknown')
+        aisle, row_val, bin = parts if len(parts) == 3 else ('Unknown', 'Unknown', 'Unknown')
         bay = row.get('Bay', 'Unknown')
 
-        text_y_position = y + label_height - 0.25 * inch
-        value_y_position = text_y_position - 0.45 * inch
+        text_y_position = y + label_height - text_y_offset
+        value_y_position = text_y_position - value_y_offset
 
-        c.setFont("Helvetica", 12)
-        c.setFillColor(colors.black)  # Set text color to black
-        c.drawString(x + 0.26 * inch, text_y_position, "Aisle:")
-        c.drawString(x + 1.37 * inch, text_y_position, "Row:")
-        c.drawString(x + 2.47 * inch, text_y_position, "Bay:")
-        c.drawString(x + 3.50 * inch, text_y_position, "Bin:")
 
-        c.setFont("Helvetica-Bold", 35)
-        c.drawString(x + 0.18 * inch, value_y_position, aisle)
-        c.drawString(x + 1.28 * inch, value_y_position, row_val)
-        c.drawString(x + 2.38 * inch, value_y_position, bay)
-        c.drawString(x + 3.40 * inch, value_y_position, bin)
+        c.setFont("Helvetica", font_size_label)
+        c.setFillColor(colors.black)
+        c.drawString(x + text_x_offset_aisle, text_y_position, "Aisle:")
+        c.drawString(x + text_x_offset_row, text_y_position, "Row:")
+        c.drawString(x + text_x_offset_bay, text_y_position, "Bay:")
+        c.drawString(x + text_x_offset_bin, text_y_position, "Bin:")
 
-        # Define and draw the white rectangle for the barcode area
-        white_rect_x = x + 0.25 * inch
-        white_rect_y = y + 0.001 * inch
-        white_rect_width = 3.13 * inch 
-        white_rect_height = 0.7 * inch
+        c.setFont("Helvetica-Bold", font_size_value)
+        c.drawString(x + value_x_offset_aisle, value_y_position, aisle)
+        c.drawString(x + value_x_offset_row, value_y_position, row_val)
+        c.drawString(x + value_x_offset_bay, value_y_position, bay)
+        c.drawString(x + value_x_offset_bin, value_y_position, bin)
 
+
+        white_rect_x = x + white_rect_x_offset
+        white_rect_y = y + white_rect_y_offset
         c.setFillColor(colors.white)
         c.rect(white_rect_x, white_rect_y, white_rect_width, white_rect_height, fill=1, stroke=0)
         c.setFillColor(colors.black)
-
-        # Draw the barcode after resetting fill color to ensure it has a white background
-        barcode = code128.Code128(row['Field1'], barHeight=0.5 * inch, barWidth=1.6)
-        barcode.drawOn(c, x + 0.2 * inch, barcode_y_position)
         
-        #Draw arrow
-        arrow_x = x + 3.7 * inch
-        arrow_start_y = y + label_height - 1.7 * inch
-        arrow_end_y = y + label_height - 0.87 * inch
+        barcode_y_position = y + barcode_y_offset
+        barcode = code128.Code128(row['Field1'], barHeight=barcode_height, barWidth=barcode_width)
+        barcode.drawOn(c, x + barcode_x_offset, barcode_y_position)
 
-        c.setLineWidth(6)
+        arrow_x = x + arrow_x_offset * inch
+        arrow_start_y = y + label_height - arrow_start_y_offset
+        arrow_end_y = arrow_start_y + arrow_length
+
+        c.setLineWidth(arrow_thickness)
         c.setStrokeColor(colors.black)
         c.setFillColor(colors.black)  
         c.line(arrow_x, arrow_start_y, arrow_x, arrow_end_y)  
 
-        #More arrow drawing
-        arrowhead_size = 0.11 * inch  # Increase size for bigger arrowhead
         p = c.beginPath()
         p.moveTo(arrow_x, arrow_end_y)
         p.lineTo(arrow_x - arrowhead_size, arrow_end_y - arrowhead_size)
         p.lineTo(arrow_x + arrowhead_size, arrow_end_y - arrowhead_size)
         p.close()
         c.drawPath(p, fill=1, stroke=1)
-        
+
         num_labels_page += 1
 
     c.save()
     return send_file('labels.pdf', as_attachment=True)
 
+
+
+def load_templates():
+    try:
+        with open('templates.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("The templates.json file was not found.")
+        return {}
+    except json.JSONDecodeError:
+        print("Error decoding the templates.json file.")
+        return {}
+
+templates = load_templates()
+
 if __name__ == '__main__':
     app.run(debug=True)
+
